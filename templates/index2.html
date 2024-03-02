@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Required metadata tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="Translate and analyze text with Azure Cognitive Services.">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <style>
+        /* 使用内部样式改变h1标签的字体 */
+        h1 {
+            font-family: Didot; /* 这里指定了Arial字体，如果没有找到则使用任何默认的无衬线字体 */
+            font-size: 40px; /* 这里指定了字体大小为24像素 */
+            color: #969696; /* 这里指定了字体颜色为深灰色 */
+        }
+    </style>
+    <title>Lingua Translation</title>
+</head>
+<body>
+    <div class="container">
+        <h1>Lingua Translation 2.0</h1>
+        <div class="row">
+            <div class="col">
+                <form>
+                    <!-- Enter text to translate -->
+                    <div class="form-group">
+                        <label for="text-to-translate"><strong>Enter the text you'd like to translate:</strong></label>
+                        <textarea class="form-control" id="sourceText" placeholder="Enter text to translate" rows="5"></textarea>
+                    </div>
+                    <!-- Select the languages -->
+                    <div class="form-group">
+                        <label for="select-source-language"><strong>From:</strong></label>
+                        <select id="sourceLang">
+                            <option value="en">English</option>
+                            <option value="cn" selected>Chinese</option>
+                            <option value="fi">Finnish</option>
+                            <option value="ja">Japanese</option>
+                            <option value="fr">French</option>
+                            <option value="is">Icelandic</option>
+                            <!-- 添加其他支持的源语言 -->
+                        </select>
+                        <label for="select-target-language"><strong>To:</strong></label>
+                        <select id="targetLang">
+                            <option value="en">English</option>
+                            <option value="cn">Chinese</option>
+                            <option value="fi" selected>Finnish</option>
+                            <option value="fr">French</option>
+                            <option value="ja">Japanese</option>
+                            <option value="is">Icelandic</option>
+                            <!-- 添加其他支持的源语言 -->
+                        </select>
+                        <div class="btn-group" role="group" aria-label="Translation buttons">
+                            <button type="submit" class="btn btn-success mr-2 mb-2" id="synthesize_sBtn">Speak</button>
+                            <button type="submit" class="btn btn-primary mr-2 mb-2" id="translateBtn">Translate</button>
+                            <button type="button" class="btn btn-danger mb-2" id="clearBtn" >Clear</button>
+                        </div>
+                        <audio controls src="" id="audio-player2"></audio>
+                    </div>
+                    
+                </form>
+                    <!-- Enter text to translate -->
+                    <div class="form-group">
+                        <label for="text-to-translate"><strong>Enter the text, then I will help you with the grammar:</strong></label>
+                        <textarea class="form-control" id="explainText" placeholder="Enter text to explain" rows="5"></textarea>
+                    </div>
+                    <!-- Select the languages -->
+                    <div class="form-group">
+                        <label for="select-explain-language"><strong>Explain in:</strong></label>
+                        <select id="exLang">
+                            <option value="en">English</option>
+                            <option value="cn" selected>Chinese</option>
+                            <option value="fi">Finnish</option>
+                            <option value="fr">French</option>
+                            <option value="ja">Japanese</option>
+                            <option value="is">Icelandic</option>
+                            <!-- 添加其他支持的源语言 -->
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-dark mb-2" id="explainBtn">Explain</button>
+                    <button type="button" class="btn btn-danger mb-2" id="clearBtn2" >Clear</button>
+                <form>
+
+                </form>
+            </div>
+            <div class="col">
+                <!-- Return the result -->
+                <form>
+                    <div class="form-group" id="translator-text-response">
+                        <label for="translation-result"><strong>Translated text:</strong></label>
+                        <textarea readonly class="form-control" id="translationResult" rows="5"></textarea>
+                    </div>
+                </form>
+                <button type="submit" class="btn btn-success mb-2" id="synthesizeBtn">Speak</button>
+                <form>
+                    <audio controls src="" id="audio-player"></audio>
+                </form>
+                
+                <form>
+                    <div class="form-group" id="explain-text-response">
+                        <label for="explain-result"><strong>Explained text:</strong></label>
+                        <textarea readonly class="form-control" id="explainResult" rows="12"></textarea>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#translateBtn').click(function(e) {
+                e.preventDefault();
+                const text = $('#sourceText').val();
+                const sourceLang = $('#sourceLang').val();
+                const targetLang = $('#targetLang').val();
+                $.ajax({
+                    url: 'http://localhost:5000/translate',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ text: text, sourceLang: sourceLang, targetLang: targetLang }),
+                    success: function(data) {
+                        $('#translationResult').text(data.translated_text);
+                    },
+                    error: function(error) {
+                        console.error("Translation error:", error);
+                    }
+                });
+            });
+
+            $('#synthesizeBtn').click(function() {
+                $.ajax({
+                    url: 'http://localhost:5000/synthesize', 
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        text: $('#translationResult').text(),
+                        targetLang: $('#targetLang').val()
+                    }),
+                    success: function(data) {
+                        var audioPlayer = $('#audio-player');
+                        var timestamp = new Date().getTime(); // get the time stamp
+                        audioPlayer.attr('src', data.audio_path + "?t=" + timestamp);
+                        audioPlayer[0].load();
+                        audioPlayer[0].play();
+                    },
+                    error: function(error) {
+                        console.error("Synthesize error:", error);
+                    }
+                });
+            });
+
+            $('#synthesize_sBtn').click(function(e) {
+                e.preventDefault(); // 阻止表单默认提交行为
+                $.ajax({
+                    url: 'http://localhost:5000/synthesize_s', 
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        text: $('#sourceText').val(),
+                        sourceLang: $('#sourceLang').val()
+                    }),
+                    success: function(data) {
+                        var audioPlayer = $('#audio-player2');
+                        var timestamp = new Date().getTime(); // get the time stamp
+                        audioPlayer.attr('src', data.audio_path + "?t=" + timestamp);
+                        audioPlayer[0].load();
+                        audioPlayer[0].play();
+                    },
+                    error: function(error) {
+                        console.error("Synthesize error:", error);
+                    }
+                });
+            });
+
+            $('#explainBtn').click(function(e) {
+                e.preventDefault();
+                const to_explain = $('#explainText').val();
+                const sourceLang = $('#sourceLang').val();
+                const exLang = $('#exLang').val();
+                $.ajax({
+                    url: 'http://localhost:5000/explain',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ to_explain: to_explain, sourceLang: sourceLang, exLang: exLang }),
+                    success: function(data) {
+                        $('#explainResult').text(data.explanation);
+                    },
+                    error: function(error) {
+                        console.error("Explain error:", error);
+                    }
+                });
+            });
+            $('#clearBtn').click(function() {
+                $('#sourceText').val(''); // Clear the textbo
+            });
+            
+            $('#clearBtn2').click(function() {
+                $('#explainText').val(''); // Clear the textbo
+            });
+        });
+    </script>
+</body>
+</html>
